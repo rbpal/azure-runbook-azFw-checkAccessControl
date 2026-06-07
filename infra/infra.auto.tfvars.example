@@ -17,6 +17,7 @@ create_seed_rules       = true       # seed test rules so the runbook is immedia
 seed_url_rules          = false      # URL app rules need Premium + TLS inspection; keep off for $0
 automation_account_name = "ac-runbook-azfw"
 runbook_name            = "Check-AzFwAccessControl"
+create_webhook          = true # also deploy the webhook-triggered variant (URL is a sensitive output)
 
 tags = {
   project = "azFw-checkAccessControl"

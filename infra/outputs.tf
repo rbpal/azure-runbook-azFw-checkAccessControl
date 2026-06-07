@@ -22,3 +22,9 @@ output "automation_identity_principal_id" {
 output "runbook_name" {
   value = module.automation_account.runbook_name
 }
+
+output "webhook_uri" {
+  description = "Secret webhook URL (only populated on first apply). Treat as a credential."
+  value       = module.automation_account.webhook_uri
+  sensitive   = true
+}

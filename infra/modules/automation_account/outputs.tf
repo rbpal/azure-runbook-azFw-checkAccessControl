@@ -9,3 +9,9 @@ output "identity_principal_id" {
 output "runbook_name" {
   value = azurerm_automation_runbook.this.name
 }
+
+output "webhook_uri" {
+  description = "Secret webhook URL (populated only on first apply). Treat as a credential."
+  value       = try(azurerm_automation_webhook.this[0].uri, null)
+  sensitive   = true
+}

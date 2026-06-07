@@ -1,6 +1,15 @@
 <#
 .SYNOPSIS
-  Check whether a flow is ALLOWED by an Azure Firewall POLICY across its DNAT, network,
+  WEBHOOK variant of Check-AzFwAccessControl — triggered by an HTTP POST to the webhook URL;
+  the flow is read from the JSON request body. Same matching logic as the manual runbook.
+
+  POST body (application/json):
+    { "SourceIp":"10.20.5.7", "Destination":"10.30.1.4", "Protocol":"TCP", "Port":443 }
+  Optional overrides in the body: "Subscription", "ResourceGroup", "FirewallPolicyName".
+  NOTE: webhooks are fire-and-forget (HTTP 202 + JobId) — read the verdict from the job output,
+  not the HTTP response.
+
+  Checks whether a flow is ALLOWED by an Azure Firewall POLICY across its DNAT, network,
   and application rule collections. Read-only. Runs as the Automation account's
   system-assigned managed identity (SAMI).
 
@@ -21,22 +30,37 @@
 #>
 
 param(
-  # Defaulted for easy testing — leave blank in the Start dialog to use the default,
-  # or type a different value to override (these three are optional).
+  # Set automatically by Azure when the runbook is triggered via its webhook URL.
+  [object] $WebhookData,
+
+  # Used when started directly (not via the webhook) and as context defaults.
   [string] $Subscription       = '00000000-0000-0000-0000-000000000000', # set to your subscription id
   [string] $ResourceGroup      = 'rg-runbook-rbpal',
   [string] $FirewallPolicyName = 'rg-runbook-azfw-pol',
-
-  # The flow to check — required.
-  [Parameter(Mandatory = $true)] [string] $SourceIp,
-  [Parameter(Mandatory = $true)] [string] $Destination,      # IP (DNAT/network) or FQDN (application)
-  [Parameter(Mandatory = $true)] [string] $Protocol,         # TCP/UDP/ICMP or HTTP/HTTPS/MSSQL
-  [Parameter(Mandatory = $true)] [int]    $DestinationPort,
-
-  # TRUE in the Automation account (uses the SAMI). Run locally from a terminal with
-  #   -UseManagedIdentity:$false  → uses your existing Connect-AzAccount / az login context.
-  [bool] $UseManagedIdentity = $true
+  [string] $SourceIp,
+  [string] $Destination,      # IP (DNAT/network) or FQDN (network/application)
+  [string] $Protocol,         # TCP/UDP/ICMP or HTTP/HTTPS/MSSQL
+  [int]    $DestinationPort,
+  [bool]   $UseManagedIdentity = $true
 )
+
+# ── webhook input: parse the POSTed JSON body into the flow parameters ──
+if ($WebhookData) {
+  try { $body = $WebhookData.RequestBody | ConvertFrom-Json }
+  catch { Write-Error "Webhook request body is not valid JSON."; exit 1 }
+  if ($body.Subscription) { $Subscription = "$($body.Subscription)" }
+  if ($body.ResourceGroup) { $ResourceGroup = "$($body.ResourceGroup)" }
+  if ($body.FirewallPolicyName) { $FirewallPolicyName = "$($body.FirewallPolicyName)" }
+  $SourceIp = "$($body.SourceIp)"
+  $Destination = "$($body.Destination)"
+  $Protocol = "$($body.Protocol)"
+  $DestinationPort = [int]$body.Port
+}
+if ([string]::IsNullOrWhiteSpace($SourceIp) -or [string]::IsNullOrWhiteSpace($Destination) -or
+  [string]::IsNullOrWhiteSpace($Protocol) -or $DestinationPort -le 0) {
+  Write-Error "Missing required field(s): provide SourceIp, Destination, Protocol, Port (via webhook JSON body or parameters)."
+  exit 1
+}
 
 $ErrorActionPreference = 'Stop'
 

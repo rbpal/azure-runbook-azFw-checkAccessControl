@@ -132,7 +132,8 @@ The PRD success metrics are the acceptance criteria — each proven by a capture
 | 11 | IPv6 input | clean *"unsupported in v1"* message |
 | 12 | Malformed IP / empty field | clean validation error + non-zero exit |
 
-Repeatable test commands live in [`tests/firewall-check-tests.sh`](tests/firewall-check-tests.sh).
+Repeatable test commands live in [`tests/firewall-check-tests.sh`](tests/firewall-check-tests.sh) and
+[`tests/firewall-check-tests.ps1`](tests/firewall-check-tests.ps1) (bash + PowerShell runners).
 
 ### Proof it works
 
@@ -176,6 +177,22 @@ honest report-only notes.
 #   (Subscription / ResourceGroup / FirewallPolicyName are defaulted)
 # See demo.md for the exact reproducible run + expected output.
 ```
+
+### Webhook (optional)
+
+A webhook-triggered variant — `runbooks/Check-AzFwAccessControl-Webhook.ps1` — reads the flow from an HTTP
+POST body. It's deployed when `create_webhook = true` (default). The webhook URL is a **sensitive** Terraform
+output (shown once, on first apply — treat it as a credential):
+
+```bash
+terraform -chdir=infra output -raw webhook_uri   # the secret URL
+curl -X POST "<webhook_uri>" -H 'Content-Type: application/json' \
+  -d '{"SourceIp":"10.20.5.7","Destination":"10.30.1.4","Protocol":"TCP","Port":443}'
+# → HTTP 202 + JobId (fire-and-forget; read the verdict from the job output)
+```
+
+For a *synchronous* answer, poll the job output (see `tests/firewall-check-tests.*`) or front the same logic
+with an HTTP-triggered Azure Function.
 
 ---
 

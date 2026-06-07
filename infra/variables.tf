@@ -59,6 +59,18 @@ variable "runbook_name" {
   default     = "Check-AzFwAccessControl"
 }
 
+variable "create_webhook" {
+  type        = bool
+  description = "Also deploy the webhook-triggered runbook variant + its webhook (URL is a sensitive output)."
+  default     = true
+}
+
+variable "webhook_expiry" {
+  type        = string
+  description = "RFC3339 expiry time for the webhook URL."
+  default     = "2030-01-01T00:00:00Z"
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to all resources."

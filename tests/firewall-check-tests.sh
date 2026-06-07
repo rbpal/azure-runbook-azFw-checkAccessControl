@@ -46,6 +46,7 @@ check_flow "N3 net sql cidr"    10.21.9.9    10.31.5.20                    TCP  
 check_flow "N4 net ip-group"    10.20.5.7    10.50.7.7                     TCP   443    # expect ALLOWED  (allow-onprem-ipgroup)
 check_flow "N5 net bad source"  10.99.0.1    10.30.1.4                     TCP   443    # expect ACCESS DENIED (source not in any rule)
 check_flow "N6 net bad port"    10.20.5.7    10.30.1.4                     TCP   9000   # expect ACCESS DENIED (port out of range)
+check_flow "N7 net fqdn"        10.20.5.7    microsoft.com                 TCP   443    # expect ALLOWED  (allow-vendor-fqdn — FQDN dest on a NETWORK rule)
 
 # ── Application (destination is an FQDN, not an IP)
 check_flow "A1 app wildcard"    10.20.5.7    api.azure.com                 HTTPS 443    # expect ALLOWED  (allow-azure-wild, *.azure.com)

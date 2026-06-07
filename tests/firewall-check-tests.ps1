@@ -70,6 +70,7 @@ Invoke-Check 'N3 net sql cidr'    '10.21.9.9'   '10.31.5.20'                    
 Invoke-Check 'N4 net ip-group'    '10.20.5.7'   '10.50.7.7'                     'TCP'   443  -Expect 'ALLOWED'
 Invoke-Check 'N5 net bad source'  '10.99.0.1'   '10.30.1.4'                     'TCP'   443  -Expect 'ACCESS DENIED'
 Invoke-Check 'N6 net bad port'    '10.20.5.7'   '10.30.1.4'                     'TCP'   9000 -Expect 'ACCESS DENIED'
+Invoke-Check 'N7 net fqdn'        '10.20.5.7'   'microsoft.com'                 'TCP'   443  -Expect 'ALLOWED'
 
 # ── Application (destination is an FQDN, not an IP)
 Invoke-Check 'A1 app wildcard'    '10.20.5.7'   'api.azure.com'                 'HTTPS' 443  -Expect 'ALLOWED'

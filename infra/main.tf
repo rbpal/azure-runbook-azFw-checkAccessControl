@@ -51,6 +51,11 @@ module "automation_account" {
   runbook_name        = var.runbook_name
   runbook_content     = file("${path.module}/../runbooks/Check-AzFwAccessControl.ps1")
 
+  # Optional webhook-triggered variant.
+  create_webhook          = var.create_webhook
+  webhook_runbook_content = var.create_webhook ? file("${path.module}/../runbooks/Check-AzFwAccessControl-Webhook.ps1") : ""
+  webhook_expiry          = var.webhook_expiry
+
   # SAMI gets Reader on the RG so the runbook can read the policy + IP groups.
   reader_scope_id = module.resource_group.id
 
