@@ -226,14 +226,17 @@ function Test-SourceMatch {
   $grps  = Get-List $Rule 'SourceIpGroups'
   foreach ($e in $addrs) {
     switch (Get-IpEntryMatch $script:SourceIp $e) {
-      'match'      { return $true }
+      'match'      { $script:sourceVia = "address $e"; return $true }
       'servicetag' { $script:notes.Add("source service tag '$e' not checked") }
       'skip'       { $script:notes.Add("source IPv6 entry '$e' skipped") }
     }
   }
   foreach ($gid in $grps) {
+    $gname = ($gid -split '/')[-1]
     foreach ($p in (Resolve-IpGroupPrefixes $gid)) {
-      if ((Get-IpEntryMatch $script:SourceIp $p) -eq 'match') { return $true }
+      if ((Get-IpEntryMatch $script:SourceIp $p) -eq 'match') {
+        $script:sourceVia = "IP group '$gname' (member $p)"; return $true
+      }
     }
   }
   return $false
@@ -249,14 +252,17 @@ function Test-DestIpMatch {
   }
   foreach ($e in $addrs) {
     switch (Get-IpEntryMatch $script:Destination $e) {
-      'match'      { return $true }
+      'match'      { $script:destVia = "address $e"; return $true }
       'servicetag' { $script:notes.Add("destination service tag '$e' not checked") }
       'skip'       { $script:notes.Add("destination IPv6 entry '$e' skipped") }
     }
   }
   foreach ($gid in $grps) {
+    $gname = ($gid -split '/')[-1]
     foreach ($p in (Resolve-IpGroupPrefixes $gid)) {
-      if ((Get-IpEntryMatch $script:Destination $p) -eq 'match') { return $true }
+      if ((Get-IpEntryMatch $script:Destination $p) -eq 'match') {
+        $script:destVia = "IP group '$gname' (member $p)"; return $true
+      }
     }
   }
   return $false
@@ -306,6 +312,8 @@ foreach ($ref in ($rcgRefs | Sort-Object { Get-Prop $_ 'Priority' })) {
     foreach ($rule in @(Get-Prop $col 'Rules')) {
       $ruleType = "$(Get-Prop $rule 'RuleType')"
       $hit = $false
+      $script:sourceVia = $null   # how source matched: "address X" / "IP group 'g' (member p)"
+      $script:destVia = $null     # how destination matched: address / IP group / FQDN
 
       if ($destIsIp -and $colType -like '*Nat*' -and $ruleType -like '*Nat*') {
         # DNAT: match on original (pre-translation) destination
@@ -318,24 +326,30 @@ foreach ($ref in ($rcgRefs | Sort-Object { Get-Prop $_ 'Priority' })) {
       }
       elseif (-not $destIsIp -and $ruleType -eq 'ApplicationRule') {
         $fqdnHit = $false
-        foreach ($t in (Get-List $rule 'TargetFqdns')) { if (Test-FqdnMatch $Destination $t) { $fqdnHit = $true } }
+        foreach ($t in (Get-List $rule 'TargetFqdns')) { if (Test-FqdnMatch $Destination $t) { $fqdnHit = $true; $script:destVia = "FQDN '$t'" } }
         $hit = (Test-SourceMatch $rule) -and $fqdnHit -and (Test-AppProtocol $rule)
       }
 
       if ($hit) {
         $provenance = [ordered]@{
-          policy          = $FirewallPolicyName
-          collectionGroup = $rcgName
-          ruleCollection  = "$(Get-Prop $col 'Name')"
-          rule            = "$(Get-Prop $rule 'Name')"
-          ruleType        = $ruleType
-          action          = $action
+          policy           = $FirewallPolicyName
+          collectionGroup  = $rcgName
+          ruleCollection   = "$(Get-Prop $col 'Name')"
+          rule             = "$(Get-Prop $rule 'Name')"
+          ruleType         = $ruleType
+          action           = $action
+          sourceMatchedVia = $script:sourceVia
+          destMatchedVia   = $script:destVia
         }
         if ($action -ieq 'Deny') {
           if (-not $matchedDeny) { $matchedDeny = $provenance }
         }
         else {
-          if (-not $matchedRule) { $matchedRule = $provenance }
+          if (-not $matchedRule) {
+            $matchedRule = $provenance
+            if ($script:sourceVia -like 'IP group*') { $notes.Add("source $SourceIp matched via $($script:sourceVia)") }
+            if ($script:destVia -like 'IP group*') { $notes.Add("destination $Destination matched via $($script:destVia)") }
+          }
         }
       }
     }
@@ -363,7 +377,11 @@ $result = [ordered]@{
 }
 
 Write-Output "VERDICT: $verdict"
-if ($prov) { Write-Output ("  matched: {0} / {1} / rule '{2}' [{3}, {4}]" -f $prov.policy, $prov.ruleCollection, $prov.rule, $prov.ruleType, $prov.action) }
+if ($prov) {
+  Write-Output ("  matched: {0} / {1} / rule '{2}' [{3}, {4}]" -f $prov.policy, $prov.ruleCollection, $prov.rule, $prov.ruleType, $prov.action)
+  if ($prov.sourceMatchedVia) { Write-Output ("  source via: {0}" -f $prov.sourceMatchedVia) }
+  if ($prov.destMatchedVia) { Write-Output ("  dest via:   {0}" -f $prov.destMatchedVia) }
+}
 foreach ($n in $notes) { Write-Output "  note: $n" }
 Write-Output ($result | ConvertTo-Json -Depth 6)
 
