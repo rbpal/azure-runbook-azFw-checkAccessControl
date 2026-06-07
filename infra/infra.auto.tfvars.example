@@ -1,0 +1,25 @@
+# Example values. Copy to infra.auto.tfvars and fill in YOUR ids:
+#   cp infra.auto.tfvars.example infra.auto.tfvars
+#
+# infra.auto.tfvars is gitignored (it holds your real subscription/tenant ids) — never commit it.
+
+# ── required ──────────────────────────────────────────────────────
+subscription_id = "<your-subscription-id>" # az account show --query id -o tsv
+tenant_id       = "<your-tenant-id>"        # az account show --query tenantId -o tsv
+# ──────────────────────────────────────────────────────────────────
+
+location = "eastus" # any Azure region
+
+resource_group_name     = "rg-runbook-rbpal"
+firewall_policy_name    = "rg-runbook-azfw-pol"
+firewall_policy_sku     = "Standard" # free when not attached to a firewall
+create_seed_rules       = true       # seed test rules so the runbook is immediately testable
+seed_url_rules          = false      # URL app rules need Premium + TLS inspection; keep off for $0
+automation_account_name = "ac-runbook-azfw"
+runbook_name            = "Check-AzFwAccessControl"
+
+tags = {
+  project = "azFw-checkAccessControl"
+  env     = "dev"
+  owner   = "rbpal"
+}

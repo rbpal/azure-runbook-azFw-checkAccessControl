@@ -101,6 +101,18 @@ IPv6 (returns *"unsupported in v1"*).
 *Infrastructure (resource group, firewall policy + seed rules, IP groups, automation account, runbook,
 Reader role) is provisioned with Terraform — modular, ~$0/mo, no Azure Firewall created.*
 
+**Configure & deploy:**
+
+```bash
+cd infra
+cp infra.auto.tfvars.example infra.auto.tfvars   # then fill in your subscription_id / tenant_id
+terraform init
+terraform apply
+```
+
+> `infra.auto.tfvars` is **gitignored** — it holds your real subscription/tenant IDs and is never
+> committed. Variable *declarations* live in `variables.tf` (public); the *values* stay local in your tfvars.
+
 ---
 
 ## Test
