@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -uo pipefail  # no -e: grep no-match is expected, handled via $fail
+fail=0
+
+# 1. No reference to gitignored private paths in tracked content (except .gitignore itself)
+offenders=$(git diff --cached --name-only -- . ':(exclude).gitignore' ':(exclude).githooks' | while read -r f; do
+  git show ":$f" 2>/dev/null | grep -Iq 'privatedoc' && echo "$f"; done)
+[ -n "$offenders" ] && { echo "✗ 'privatedocs' referenced in tracked file(s): $offenders"; fail=1; }
+
+# 2. No secrets / state / tfvars staged
+if git diff --cached --name-only | grep -E '(^|/)(\.env|.*\.tfstate.*|.*\.tfplan|.*\.auto\.tfvars)$|(^|/)\.terraform/' ; then
+  echo "✗ secret/state/tfvars file staged — unstage it"; fail=1
+fi
+
+# 3. Advisory: confirm new/changed screenshots are PII-cropped
+imgs=$(git diff --cached --name-only --diff-filter=AM | grep -Ei '\.(png|jpe?g)$' || true)
+[ -n "$imgs" ] && { echo "⚠ verify NO account email in these screenshots (cropped):"; echo "$imgs"; }
+
+[ "$fail" = 0 ] || { echo "pre-commit BLOCKED — fix and re-stage."; exit 1; }

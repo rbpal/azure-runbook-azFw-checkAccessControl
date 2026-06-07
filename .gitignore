@@ -1,0 +1,28 @@
+# ── privacy: never publish local/private artifacts ──────────────
+# (comments MUST be on their own line — git does not support inline # comments)
+# private study docs (also a sibling dir; defense in depth)
+privatedocs/
+# AI tooling — never commit
+.claude/
+# repo memory — local only (filename privacy rule); still auto-loaded from disk
+CLAUDE.md
+CLAUDE.local.md
+.env
+
+# ── terraform: state, plans, and secret vars are local only ──────
+*.tfstate
+*.tfstate.*
+*.tfplan
+tf.plan
+*.plan
+.terraform/
+# secrets (subscription/tenant ids, keys)
+*.auto.tfvars
+# ────────────────────────────────────────────────────────────────
+
+# language / tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pattern built from string fragments so the literal tokens never appear in
+# committed source (privacy rule: those words must not exist in tracked files).
+pat="$(printf 'an''thropic')|$(printf 'cl''aude')|Co-Authored-By"
+if grep -Eiq "$pat" "$1"; then
+  echo "✗ commit message contains AI attribution — remove it."; exit 1
+fi
