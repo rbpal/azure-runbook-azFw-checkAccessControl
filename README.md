@@ -157,15 +157,21 @@ honest report-only notes.
 
 <img src="docs/images/runbook-allowed-network-cidr-web-rule.png" alt="Network CIDR ALLOWED — matched seed-net / allow-web-cidr with JSON provenance" width="820">
 
-**IP Group → `ALLOWED`** (`10.50.7.7 ∈ ipg-onprem` matched `allow-onprem-ipgroup`; IP groups resolved + expanded):
+**IP Group → `ALLOWED`** (`10.50.7.7 ∈ ipg-onprem` matched `allow-onprem-ipgroup`) — the output shows
+`dest via: IP group 'ipg-onprem' (member 10.50.0.0/16)`, so you see *how* it matched:
 
-<img src="docs/images/runbook-allowed-network-ipgroup.png" alt="Network IP-group ALLOWED — matched seed-net / allow-onprem-ipgroup" width="820">
+<img src="docs/images/runbook-network-ipgroup-provenance.png" alt="Network IP-group ALLOWED with dest-via provenance — matched seed-net / allow-onprem-ipgroup" width="820">
 
 #### Application
 
 **Wildcard FQDN → `ALLOWED`** (`api.azure.com ∈ *.azure.com` matched `allow-azure-wild`):
 
 <img src="docs/images/runbook-allowed-application-wildcard-fqdn.png" alt="Application wildcard ALLOWED — matched seed-app / allow-azure-wild" width="820">
+
+**Source IP Group → `ALLOWED`** (source `10.60.1.9 ∈ ipg-appclients` matched `allow-appclients-ipgroup`) —
+the output shows `source via: IP group 'ipg-appclients' (member 10.60.0.0/16)`:
+
+<img src="docs/images/runbook-application-ipgroup-provenance.png" alt="Application source IP-group ALLOWED with source-via provenance — matched seed-app / allow-appclients-ipgroup" width="820">
 
 ---
 
@@ -192,7 +198,34 @@ curl -X POST "<webhook_uri>" -H 'Content-Type: application/json' \
 ```
 
 For a *synchronous* answer, poll the job output (see `tests/firewall-check-tests.*`) or front the same logic
-with an HTTP-triggered Azure Function.
+with an HTTP-triggered Azure Function. Dedicated webhook runners live in
+[`tests/webhook-check-tests.sh`](tests/webhook-check-tests.sh) and
+[`tests/webhook-check-tests.ps1`](tests/webhook-check-tests.ps1).
+
+#### Webhook — proven across collections
+
+Every check below was triggered by an HTTP **POST to the webhook URL** (runbook `Check-AzFwAccessControl-Webhook`),
+in Azure's order — **DNAT → Network → Application** — plus an implicit-deny case:
+
+**DNAT → `ALLOWED`** (`20.50.60.70 : TCP/3389` matched `dnat-rdp`):
+
+<img src="docs/images/runbook-webhook-dnat.png" alt="Webhook DNAT ALLOWED — matched seed-dnat / dnat-rdp" width="820">
+
+**Network CIDR → `ALLOWED`** (`10.30.1.4 : TCP/443` matched `allow-web-cidr`):
+
+<img src="docs/images/runbook-webhook-network-cidr.png" alt="Webhook Network CIDR ALLOWED — matched seed-net / allow-web-cidr" width="820">
+
+**Network IP Group → `ALLOWED`** (`10.50.7.7 ∈ ipg-onprem` matched `allow-onprem-ipgroup`; `dest via` shown):
+
+<img src="docs/images/runbook-webhook-network-ipgroup.png" alt="Webhook Network IP-group ALLOWED — matched seed-net / allow-onprem-ipgroup" width="820">
+
+**Application wildcard → `ALLOWED`** (`api.azure.com ∈ *.azure.com` matched `allow-azure-wild`):
+
+<img src="docs/images/runbook-webhook-application.png" alt="Webhook Application wildcard ALLOWED — matched seed-app / allow-azure-wild" width="820">
+
+**No match → `ACCESS DENIED (implicit)`** (`10.99.0.1 → 10.30.1.4` — source not in any rule):
+
+<img src="docs/images/runbook-webhook-denied.png" alt="Webhook ACCESS DENIED implicit — no allow rule matched" width="820">
 
 ---
 

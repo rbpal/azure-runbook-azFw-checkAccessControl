@@ -1,0 +1,15 @@
+# Copy to webhook.auto.tfvars and fill in YOUR test values:
+#   cp webhook.auto.tfvars.example webhook.auto.tfvars
+# webhook.auto.tfvars is gitignored (*.auto.tfvars) — never commit it.
+
+subscription_id = "<your-test-subscription-id>" # az account show --query id -o tsv
+tenant_id       = "<your-test-tenant-id>"        # az account show --query tenantId -o tsv
+
+resource_group_name     = "<your-resource-group>"
+automation_account_name = "<your-automation-account>"
+
+# Must already exist in that account:
+runbook_name = "Check-AzFwAccessControl-Webhook"
+
+webhook_name = "Check-AzFwAccessControl-hook"
+expiry_time  = "2030-01-01T00:00:00Z"

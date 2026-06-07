@@ -181,7 +181,11 @@ try {
   elseif (-not (Get-AzContext)) {
     Connect-AzAccount | Out-Null   # local: interactive sign-in if no context yet
   }
-  Set-AzContext -Subscription $Subscription | Out-Null
+  # Only switch subscription when a real one is supplied; otherwise use the
+  # identity's default context (the placeholder means "use my default").
+  if ($Subscription -and $Subscription -ne '00000000-0000-0000-0000-000000000000') {
+    Set-AzContext -Subscription $Subscription | Out-Null
+  }
 }
 catch {
   Write-Error "Auth / subscription context failed: $($_.Exception.Message)"
